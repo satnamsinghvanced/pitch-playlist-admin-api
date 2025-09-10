@@ -1,0 +1,10 @@
+import mongoose from 'mongoose';
+
+const artistTypeSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+}, { timestamps: true });
+
+const artistType = mongoose.model("artist", artistTypeSchema);
+
+export default artistType;
