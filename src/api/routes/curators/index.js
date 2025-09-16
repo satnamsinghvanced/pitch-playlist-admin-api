@@ -1,7 +1,8 @@
 
 import generateCuratorList from "../../helpers/generateCuratorList.js";
 import TopCuratorAdminList from "../../../models/topCuratorAdminList/index.js";
-
+import auth from "../../../middleware/auth.js";
+import express from "express";
 
 const router = express.Router();
 
@@ -48,3 +49,4 @@ router.get("/curator-statistics", auth, async (req, res) => {
     res.status(500).send({ msg: err.message });
   }
 });
+export default router;
