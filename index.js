@@ -15,6 +15,8 @@ app.get("/cron/testing", async (req, res) => {
 });
 
 
+
 app.listen(PORT, () => {
+	console.log("ee");
   console.log("Server is running..." + PORT);
 });
