@@ -7,101 +7,97 @@ import { getWarningsDetail } from "./getWarningsDetail.js";
 
 const curatorResponse = async (startDate, endDate) => {
   try {
+    // Build date filter
     const dateFilter = {};
     if (startDate) {
-      let start = moment(startDate, "DD-MM-YYYY").toDate();
-      if (!isNaN(start.getTime())) {
-        dateFilter.$gte = start;
-      } else {
-        console.error("Invalid startDate:", startDate);
-      }
+      const start = moment(startDate, "DD-MM-YYYY").toDate();
+      if (!isNaN(start.getTime())) dateFilter.$gte = start;
+      else console.error("Invalid startDate:", startDate);
     }
-
     if (endDate) {
-      let end = moment(endDate, "DD-MM-YYYY").toDate();
+      const end = moment(endDate, "DD-MM-YYYY").toDate();
       if (!isNaN(end.getTime())) {
         end.setHours(23, 59, 59, 999);
         dateFilter.$lte = end;
-      } else {
-        console.error("Invalid endDate:", endDate);
-      }
+      } else console.error("Invalid endDate:", endDate);
     }
-    const playlists = await Playlist.find({});
-    const userIds = [...new Set(playlists.map((val) => val.playlistOwnerId))];
-    const userDate = await Promise.all(
-      userIds.map(async (userId) => {
-        const user = await User.findOne({ spotifyId: userId });
-        const allPlaylist = await Playlist.find({
-          // isActive: true,
-          playlistOwnerId: userId,
-        });
-        const playlistIds = allPlaylist.map((playlist) => playlist._id);
-        const totalPlaylist = await Playlist.countDocuments();
-        const maxPlaylists = await Playlist.aggregate([
-          {
-            $group: {
-              _id: "$userId",
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $sort: { count: -1 },
-          },
-          {
-            $limit: 1,
-          },
-        ]);
-        const maxPlaylistCount = maxPlaylists[0]?.count ;
-        // console.log("max" ,maxPlaylistCount )
+
+    // Fetch all playlist owners
+    const playlists = await Playlist.find({}, { playlistOwnerId: 1 }).lean();
+    const userIds = [...new Set(playlists.map((p) => p.playlistOwnerId))];
+
+    const batchSize = 20; // process 20 users at a time
+    const userDate = [];
+
+    for (let i = 0; i < userIds.length; i += batchSize) {
+      const batch = userIds.slice(i, i + batchSize);
+
+      for (const userId of batch) {
+        // Fetch user fields only
+        const user = await User.findOne({ spotifyId: userId }, { _id: 1, country: 1 }).lean();
+        if (!user) continue;
+
+        // Fetch user's playlists with only necessary fields
+        const allPlaylists = await Playlist.find(
+          { playlistOwnerId: userId },
+          { _id: 1, genres: 1, createdAt: 1 }
+        ).lean();
+
+        const playlistIds = allPlaylists.map((p) => p._id);
+
+        // Submitted playlists count
         const submittedPlaylist = await Playlist.countDocuments({
-          // isActive: true,
           playlistOwnerId: userId,
-          // ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
+          ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
         });
 
+        // Submitted tracks count
         const submittedTracks = await Track.countDocuments({
           playlist: { $in: playlistIds },
           ...(Object.keys(dateFilter).length && { updatedAt: dateFilter }),
         });
+
+        // Feedback given
         const feedBackGiven = await Track.countDocuments({
           playlist: { $in: playlistIds },
           ...(Object.keys(dateFilter).length && { updatedAt: dateFilter }),
           status: { $in: ["approved", "declined"] },
         });
+
+        // Expired tracks
         const expiredTrack = await Track.countDocuments({
           playlist: { $in: playlistIds },
           status: "expired",
           ...(Object.keys(dateFilter).length && { updatedAt: dateFilter }),
         });
+
+        // Bonus points
         const bonusPoint = await Referral.countDocuments({
           referredBy: user._id,
           ...(Object.keys(dateFilter).length && { createdAt: dateFilter }),
         });
 
-        const result = await Referral.aggregate([
-
-          {
-            $group: {
-              _id: "$referredBy",
-              count: { $sum: 1 },
-            },
-          },
-          {
-            $sort: { count: -1 },
-          },
-          {
-            $limit: 1,
-          },
+        // Max playlist count
+        const maxPlaylistsAgg = await Playlist.aggregate([
+          { $group: { _id: "$playlistOwnerId", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 1 },
         ]);
-        const maxBonusPoint = result[0]?.count || 0;
-        //  console.log("maxsfdsfsfasd" ,maxBonusPoint )
-        const responseRate =
-          submittedTracks === 0 ? 0 : feedBackGiven / submittedTracks;
-        const filter = {
-          status: { $in: ["approved", "declined"] },
-          ...(Object.keys(dateFilter).length && { updatedAt: dateFilter }),
-        };
-        const feedBackGivenDays = await Track.aggregate([
+        const maxPlaylistCount = maxPlaylistsAgg[0]?.count || 0;
+
+        // Max bonus points
+        const maxBonusAgg = await Referral.aggregate([
+          { $group: { _id: "$referredBy", count: { $sum: 1 } } },
+          { $sort: { count: -1 } },
+          { $limit: 1 },
+        ]);
+        const maxBonusPoint = maxBonusAgg[0]?.count || 0;
+
+        // Calculate response rate
+        const responseRate = submittedTracks === 0 ? 0 : feedBackGiven / submittedTracks;
+
+        // Feedback given days
+        const feedBackGivenDaysAgg = await Track.aggregate([
           {
             $match: {
               playlist: { $in: playlistIds },
@@ -109,20 +105,16 @@ const curatorResponse = async (startDate, endDate) => {
               ...(Object.keys(dateFilter).length && { updatedAt: dateFilter }),
             },
           },
-          {
-            $group: {
-              _id: {
-                $dateToString: { format: "%Y-%m-%d", date: "$updatedAt" },
-              },
-            },
-          },
-          {
-            $count: "dayCount",
-          },
+          { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$updatedAt" } } } },
+          { $count: "dayCount" },
         ]);
-        const feedBackGivenDaysCount = feedBackGivenDays[0]?.dayCount || 0;
-        return {
-          userId: { ...user._doc },
+        const feedBackGivenDaysCount = feedBackGivenDaysAgg[0]?.dayCount || 0;
+
+        // Warnings
+        const warningReceived = await getWarningsDetail(user._id, startDate, endDate);
+
+        userDate.push({
+          userId: user,
           responseRate,
           bonusPoint,
           maxBonusPoint,
@@ -130,17 +122,13 @@ const curatorResponse = async (startDate, endDate) => {
           feedBackGiven,
           submittedTracks,
           submittedPlaylist,
-          totalPlaylist,
           maxPlaylistCount,
           feedBackGivenDaysCount,
-          warningReceived: await getWarningsDetail(
-            user._id,
-            startDate,
-            endDate
-          ),
-        };
-      })
-    );
+          warningReceived,
+        });
+      }
+    }
+
     return userDate;
   } catch (err) {
     console.error(err.message, "error");
