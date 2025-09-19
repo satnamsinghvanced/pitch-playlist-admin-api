@@ -67,63 +67,56 @@ import moment from "moment";
 export const getWarningsDetail = async (userId, startDate, endDate) => {
   try {
     const dateFilter = {};
-
     if (startDate) {
-      const start = moment(startDate, "DD-MM-YYYY").toDate();
-      if (!isNaN(start.getTime())) {
-        dateFilter.$gte = start;
-      }
+      const start = moment(startDate, "DD-MM-YYYY").startOf("day").toDate();
+      if (!isNaN(start.getTime())) dateFilter.$gte = start;
     }
-
     if (endDate) {
-      const end = moment(endDate, "DD-MM-YYYY").toDate();
-      if (!isNaN(end.getTime())) {
-        end.setHours(23, 59, 59, 999);
-        dateFilter.$lte = end;
-      }
+      const end = moment(endDate, "DD-MM-YYYY").endOf("day").toDate();
+      if (!isNaN(end.getTime())) dateFilter.$lte = end;
     }
 
-    // Get user's playlists
     const allPlaylist = await Playlist.find({ userId });
     if (!allPlaylist.length) return 0;
-
     const playlistIds = allPlaylist.map((p) => p._id);
 
-    // Get the warning day count (default to 7)
     const warningDayDoc = await WarningDays.findOne({});
     const warningDays = warningDayDoc?.noOfDays ?? 7;
 
-    // Fetch removed tracks that were approved earlier
-    const rawTrackStatus = await TrackStatus.find({
-      playlist: { $in: playlistIds },
-      stillInPlaylist: false ,
-      removedFromPlaylist: { $ne: null, ...(Object.keys(dateFilter).length ? dateFilter : {}) },
-      approvedOn: { $ne: null }
-    });
+    const warnings = await TrackStatus.aggregate([
+      {
+        $match: {
+          playlist: { $in: playlistIds },
+          stillInPlaylist: false,
+          removedFromPlaylist: { $ne: null, ...(Object.keys(dateFilter).length ? dateFilter : {}) },
+          approvedOn: { $ne: null },
+        },
+      },
+      {
+        $project: {
+          diffInDays: {
+            $divide: [
+              { $subtract: ["$removedFromPlaylist", "$approvedOn"] },
+              1000 * 60 * 60 * 24,
+            ],
+          },
+        },
+      },
+      {
+        $match: {
+          diffInDays: { $gte: 0, $lt: warningDays },
+        },
+      },
+      { $count: "count" },
+    ]);
 
-    const warnings = rawTrackStatus.filter((val) => {
-      const approvedDate = new Date(val.approvedOn);
-      const removedDate = new Date(val.removedFromPlaylist);
-
-      if (
-        !(approvedDate instanceof Date) || isNaN(approvedDate.getTime()) ||
-        !(removedDate instanceof Date) || isNaN(removedDate.getTime())
-      ) {
-        return false;
-      }
-
-      const timeDiffInDays = (removedDate - approvedDate) / (1000 * 60 * 60 * 24);
-      
-      return timeDiffInDays >= 0 && timeDiffInDays < warningDays;
-    });
-
-    return warnings.length;
-
+    return warnings[0]?.count || 0;
   } catch (err) {
     console.error("Error in getWarningsDetail:", err);
     throw new Error(err.message);
   }
 };
+
 
 
 export const getPlaylistWarnings = async (playlistId, dateFilter) => {

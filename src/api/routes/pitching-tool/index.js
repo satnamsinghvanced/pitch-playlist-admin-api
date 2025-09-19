@@ -448,7 +448,7 @@ router.get("/track-status", auth, async (req, res) => {
 //     res.status(500).send({ msg: "Server Error" });
 //   }
 // });
-router.get("/genre", auth, async (req, res) => {
+router.get("/genre",  async (req, res) => {
   try {
     const { trackId } = req.query;
     let tracks;
@@ -486,6 +486,43 @@ router.get("/genre", auth, async (req, res) => {
     res.status(500).send({ msg: "Server Error" });
   }
 });
+
+router.get("/all-genre", async (req, res)=>{
+  try {
+    const allGenre = await Genres.find();
+   const categories = [...new Set(allGenre.map(genre => genre.category))];
+    return res.status(200).json({categories , message:" Genre Fetch Successfull"})
+  } catch (error) {
+    return res.status(500).json({erro:error.message})
+  }
+})
+
+router.get("/genre-category", async (req, res)=>{
+  try {
+    const category = req.body;
+    const categoryGenres = await Genres.find(category)
+       const allPlaylist = await PlaylistModel.find({}, { _id: 1, genres: 1 });
+       const genre = await Promise.all(
+      categoryGenres.map(async (val) => {
+        const genreId = val.id;
+
+        const matchingPlaylistIds = allPlaylist
+          .filter((playlist) =>
+            playlist.genres.some((g) => g.id === genreId)
+          )
+          .map((playlist) => playlist._id); 
+
+        return {
+          ...val.toObject(),
+          playlists: matchingPlaylistIds,
+        };
+      })
+    );
+    return res.status(200).json({genre , message:" Genre category Fetch Successfull"})
+  } catch (error) {
+      return res.status(500).json({erro:error.message})
+  }
+})
 
 router.put("/remove-track", auth, async (req, res) => {
   try {

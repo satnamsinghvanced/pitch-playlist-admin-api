@@ -1,52 +1,72 @@
-
-import generateCuratorList from "../../helpers/generateCuratorList.js";
+// import generateCuratorList from "../../helpers/generateCuratorList.js";
 import TopCuratorAdminList from "../../../models/topCuratorAdminList/index.js";
 import auth from "../../../middleware/auth.js";
 import express from "express";
+import UserVisit from "../../../models/userVisit/index.js";
+import { getTopCurators, generateCuratorList } from "../../helpers/allCurator.js";
 
 const router = express.Router();
 
-router.get("/curator-statistics", auth, async (req, res) => {
+router.get("/curator-statistics", async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const {
+      startDate,
+      endDate,
+      page = 1,
+      limit = 100,
+      refresh = "false", // optional query to force regeneration
+    } = req.query;
 
-    await generateCuratorList(startDate, endDate);
+    const numericPage = Number(page);
+    const numericLimit = Number(limit);
 
-    const latestEntry = await TopCuratorAdminList.findOne().sort({
-      createdAt: -1,
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const alreadyGenerated = await TopCuratorAdminList.findOne({
+      createdAt: { $gte: todayStart },
     });
-    if (!latestEntry)
-      return res.status(404).json({ msg: "No curator list found" });
 
-    const latestDate = new Date(latestEntry.createdAt);
-    latestDate.setHours(0, 0, 0, 0);
-    const nextDay = new Date(latestDate);
-    nextDay.setDate(nextDay.getDate() + 1);
+    // Only generate if:
+    // - it's page 1
+    // - AND (not generated today OR explicitly forced)
+    
+    if (
+      numericPage === 1 &&
+      (!alreadyGenerated || refresh.toLowerCase() === "true" || startDate && endDate)
+    ) {
+      console.log("Generating top curators...");
+      await generateCuratorList(startDate, endDate);
+    }
 
-    const topCurator = await TopCuratorAdminList.find({
-      createdAt: { $gte: latestDate, $lt: nextDay },
-    }).populate("userId");
+    // Get paginated list
+    const { data, pagination } = await getTopCurators(numericPage, numericLimit);
 
-    const topCuratorChart = await Promise.all(
-      topCurator.map(async (val) => {
-        const userId = val.userId?._id;
-
-        const [warning, active] = await Promise.all([
-          // getWarningsDetail(userId, startDate, endDate),
-          UserVisit.findOne({ userId }).sort({ createdAt: -1 }),
-        ]);
+    // Add last active timestamps
+    const result = await Promise.all(
+      data.map(async (entry) => {
+        const userId = entry.userId?._id || entry.userId;
+        const lastVisit = await UserVisit.findOne({ userId }).sort({ createdAt: -1 });
 
         return {
-          ...val.toObject(),
-          lastActive: active?.createdAt || null,
+          ...entry.toObject(),
+          lastActive: lastVisit?.createdAt || null,
         };
       })
     );
 
-    res.status(200).json(topCuratorChart);
+    return res.status(200).json({
+      curators: result,
+      pagination,
+      message:
+        numericPage === 1 && (!alreadyGenerated || refresh === "true")
+          ? "Curator list regenerated."
+          : "Curator list fetched from existing data.",
+    });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send({ msg: err.message });
+    console.error("Error in /curator-statistics:", err.message);
+    return res.status(500).json({ msg: err.message });
   }
 });
+
 export default router;
