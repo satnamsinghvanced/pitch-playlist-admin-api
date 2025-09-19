@@ -7,6 +7,7 @@ import { getWarningsDetail } from "./getWarningsDetail.js";
 
 const curatorResponse = async (startDate, endDate) => {
   try {
+    // Build date filter
     const dateFilter = {};
     if (startDate) {
       const start = moment(startDate, "DD-MM-YYYY").startOf("day").toDate();
@@ -14,7 +15,6 @@ const curatorResponse = async (startDate, endDate) => {
         dateFilter.$gte = start;
       }
     }
-
     if (endDate) {
       const end = moment(endDate, "DD-MM-YYYY").endOf("day").toDate();
       if (!isNaN(end.getTime())) {
@@ -163,7 +163,6 @@ const curatorResponse = async (startDate, endDate) => {
           feedBackGiven,
           submittedTracks,
           submittedPlaylist,
-          totalPlaylist,
           maxPlaylistCount,
           feedBackGivenDaysCount,
           warningReceived: await getWarningsDetail(
