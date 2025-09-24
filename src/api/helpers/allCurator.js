@@ -7,6 +7,9 @@ import TopCuratorAdminListJs from "../../models/topCuratorAdminList/index.js";
 import getCountryName from "./getCountryName.js";
 import { getWarningsDetail } from "./getWarningsDetail.js";
 import moment from "moment";
+import topCuratorAdminListSevenDays from "../../models/topCuratorAdminListSevenDays/index.js";
+import topCuratorAdminListMonth from "../../models/topCuratorAdminListMonth/index.js";
+import topCuratorAdminListYear from "../../models/topCuratorAdminListYear/index.js";
 
 
 export const generateCuratorList = async (startDate, endDate) => {
@@ -277,6 +280,87 @@ export const getTopCurators = async (page = 1, limit = 100) => {
       .populate("userId","name email updatedAt");
 
     const total = await TopCuratorAdminListJs.countDocuments();
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (err) {
+    console.error("getTopCurators error:", err.message);
+    throw new Error("Failed to fetch top curators");
+  }
+};
+
+export const getTopCuratorsSeven = async (page = 1, limit = 100) => {
+  try {
+    const skip = (page - 1) * limit;
+
+    const data = await topCuratorAdminListSevenDays.find({})
+      .sort({ position: 1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("userId","name email updatedAt");
+
+    const total = await topCuratorAdminListSevenDays.countDocuments();
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (err) {
+    console.error("getTopCurators error:", err.message);
+    throw new Error("Failed to fetch top curators");
+  }
+};
+
+export const getTopCuratorsMonth = async (page = 1, limit = 100) => {
+  try {
+    const skip = (page - 1) * limit;
+
+    const data = await topCuratorAdminListMonth.find({})
+      .sort({ position: 1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("userId","name email updatedAt");
+
+    const total = await topCuratorAdminListMonth.countDocuments();
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  } catch (err) {
+    console.error("getTopCurators error:", err.message);
+    throw new Error("Failed to fetch top curators");
+  }
+};
+
+export const getTopCuratorsYear = async (page = 1, limit = 100) => {
+  try {
+    const skip = (page - 1) * limit;
+
+    const data = await topCuratorAdminListYear.find({})
+      .sort({ position: 1 })
+      .skip(skip)
+      .limit(limit)
+      .populate("userId","name email updatedAt");
+
+    const total = await topCuratorAdminListYear.countDocuments();
 
     return {
       data,
