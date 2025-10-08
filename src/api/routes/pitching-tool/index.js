@@ -85,7 +85,148 @@ router.post("/submit-song", auth, async (req, res) => {
     res.status(500).send({ msg: err.message });
   }
 });
-async function processSubmission({
+// async function processSubmission({
+//   selectedPlaylistsIds,
+//   userId,
+//   spotifyId,
+//   trackId,
+//   authHeader,
+// }) {
+//   try {
+//     const totalPlaylists = selectedPlaylistsIds.length;
+//     const savedTrackIds = [];
+//     const playlistUrls = [];
+//     const chunkSize = 100; 
+//     const limit = pLimit(2); 
+
+//     const track = (await withRetry(() =>
+//       axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+//         headers: { Authorization: authHeader },
+//         timeout: 10000,
+//       })
+//     )).data;
+
+//     const artist = (await withRetry(() =>
+//       axios.get(`https://api.spotify.com/v1/artists/${track.artists[0].id}`, {
+//         headers: { Authorization: authHeader },
+//         timeout: 10000,
+//       })
+//     )).data;
+
+//     const withTimeout = (promise, ms, playlistId) =>
+//       Promise.race([
+//         promise,
+//         new Promise((_, reject) =>
+//           setTimeout(() => reject(new Error(`Timeout on ${playlistId}`)), ms)
+//         ),
+//       ]);
+
+//     // Process playlists in concurrent but memory-safe batches
+//     for (let i = 0; i < totalPlaylists; i += chunkSize) {
+//       const batch = selectedPlaylistsIds.slice(i, i + chunkSize);
+
+//       const tasks = batch.map((playlistId) =>
+//         limit(async () => {
+//           try {
+//             await withTimeout(
+//               withRetry(async () => {
+//                 const singlePlaylist = await PlaylistModel.findById(playlistId);
+//                 if (!singlePlaylist) throw new Error("Playlist not found");
+
+//                 if (singlePlaylist.playlistUrl) playlistUrls.push(singlePlaylist.playlistUrl);
+
+//                 singlePlaylist.totalSubmissions =
+//                   (singlePlaylist.totalSubmissions || 0) + 1;
+//                 await singlePlaylist.save();
+
+//                 const newSong = new Track({
+//                   playlist: playlistId,
+//                   spotifyId,
+//                   track: {
+//                     artistName: artist?.name,
+//                     artists: track?.artists,
+//                     artistsArr: [
+//                       {
+//                         artistName: artist?.name,
+//                         artistId: artist?.id,
+//                         artistUrl: artist?.external_urls.spotify,
+//                         totalFollowers: artist?.followers.total,
+//                       },
+//                     ],
+//                     trackImageUrl: track?.album.images[1]?.url,
+//                     trackName: track?.name,
+//                     preview_url: track?.preview_url,
+//                     trackId,
+//                     trackUrl: track?.external_urls.spotify,
+//                     uri: track?.uri,
+//                   },
+//                   status: "pending",
+//                 });
+
+//                 const saved = await newSong.save();
+//                 savedTrackIds.push(saved._id); // store only _id to save memory
+//                 await delay(50); // give GC breathing room
+//               }),
+//               15000,
+//               playlistId
+//             );
+//           } catch (err) {
+//             console.error(`❌ Playlist ${playlistId} failed:`, err.message);
+//           }
+//         })
+//       );
+
+//       await Promise.allSettled(tasks); // wait for batch to finish
+//     }
+
+//     // Save SubmittedTracks in chunks
+//     for (let i = 0; i < savedTrackIds.length; i += chunkSize) {
+//       const chunkedTrackIds = savedTrackIds.slice(i, i + chunkSize);
+//       const chunkedPlaylistUrls = playlistUrls.slice(i, i + chunkSize);
+
+//       await new SubmittedTracks({
+//         trackId,
+//         totalSubmitted: totalPlaylists,
+//         userId,
+//         spotifyId,
+//         tracksIds: { [`chunk-${i / chunkSize}`]: chunkedTrackIds },
+//         playlistUrl: { [`chunk-${i / chunkSize}`]: chunkedPlaylistUrls },
+//       }).save();
+//     }
+
+//     // Send completion email
+//     const user = await admin.findById(userId);
+//     if (user?.email) {
+//       await sendCompletionEmail(
+//        "amrinder02.2000@gmail.com",
+//         track.name,
+//         totalPlaylists,
+//         savedTrackIds.length,
+//         totalPlaylists - savedTrackIds.length,
+//         user.firstName || "Admin"
+//       );
+//     }
+
+//     console.log("✅ Submission completed successfully.");
+//   } catch (error) {
+//     console.error("❌ Background processing failed:", error.message);
+//     // optional: send failure email
+//     const user = await admin.findById(userId);
+//     if (user?.email) {
+//       await sendCompletionEmail(
+//        "amrinder02.2000@gmail.com",
+//         trackId,
+//         0,
+//         0,
+//         0,
+//         user.firstName || "Admin",
+//         error.message
+//       );
+//     }
+//   }
+// }
+
+ async function processSubmission({
   selectedPlaylistsIds,
   userId,
   spotifyId,
@@ -96,9 +237,11 @@ async function processSubmission({
     const totalPlaylists = selectedPlaylistsIds.length;
     const savedTrackIds = [];
     const playlistUrls = [];
-    const chunkSize = 100; 
-    const limit = pLimit(2); 
+    const batchSize = 100; // memory-friendly batch size
+    const concurrency = 2;
+    const limit = pLimit(concurrency);
 
+    // Fetch track + artist once
     const track = (await withRetry(() =>
       axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
         headers: { Authorization: authHeader },
@@ -121,9 +264,9 @@ async function processSubmission({
         ),
       ]);
 
-    // Process playlists in concurrent but memory-safe batches
-    for (let i = 0; i < totalPlaylists; i += chunkSize) {
-      const batch = selectedPlaylistsIds.slice(i, i + chunkSize);
+    // Process playlists in batches
+    for (let i = 0; i < totalPlaylists; i += batchSize) {
+      const batch = selectedPlaylistsIds.slice(i, i + batchSize);
 
       const tasks = batch.map((playlistId) =>
         limit(async () => {
@@ -164,8 +307,8 @@ async function processSubmission({
                 });
 
                 const saved = await newSong.save();
-                savedTrackIds.push(saved._id); // store only _id to save memory
-                await delay(50); // give GC breathing room
+                savedTrackIds.push(saved._id); // store only _id
+                await delay(50); // let GC run
               }),
               15000,
               playlistId
@@ -176,25 +319,20 @@ async function processSubmission({
         })
       );
 
-      await Promise.allSettled(tasks); // wait for batch to finish
+      await Promise.allSettled(tasks); // wait for this batch
     }
 
-    // Save SubmittedTracks in chunks
-    for (let i = 0; i < savedTrackIds.length; i += chunkSize) {
-      const chunkedTrackIds = savedTrackIds.slice(i, i + chunkSize);
-      const chunkedPlaylistUrls = playlistUrls.slice(i, i + chunkSize);
+    // ✅ Save a single SubmittedTracks document
+    await new SubmittedTracks({
+      trackId,
+      totalSubmitted: totalPlaylists,
+      userId,
+      spotifyId,
+      tracksIds: savedTrackIds, // all IDs in one array
+      playlistUrl, // all playlist URLs
+    }).save();
 
-      await new SubmittedTracks({
-        trackId,
-        totalSubmitted: totalPlaylists,
-        userId,
-        spotifyId,
-        tracksIds: { [`chunk-${i / chunkSize}`]: chunkedTrackIds },
-        playlistUrl: { [`chunk-${i / chunkSize}`]: chunkedPlaylistUrls },
-      }).save();
-    }
-
-    // Send completion email
+    // ✅ Send completion email
     const user = await admin.findById(userId);
     if (user?.email) {
       await sendCompletionEmail(
@@ -210,11 +348,10 @@ async function processSubmission({
     console.log("✅ Submission completed successfully.");
   } catch (error) {
     console.error("❌ Background processing failed:", error.message);
-    // optional: send failure email
     const user = await admin.findById(userId);
     if (user?.email) {
       await sendCompletionEmail(
-       "amrinder02.2000@gmail.com",
+        "amrinder02.2000@gmail.com",
         trackId,
         0,
         0,
