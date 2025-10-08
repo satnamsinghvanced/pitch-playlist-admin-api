@@ -346,7 +346,7 @@ async function processSubmission({
     const user = await admin.findById(userId);
     if (user?.email) {
       await sendCompletionEmail(
-        "amrinder02.2000@gmail.com",
+        user.email,
         track.name,
         totalPlaylists,
         savedTrackIds.length,
@@ -361,7 +361,7 @@ async function processSubmission({
     const user = await admin.findById(userId);
     if (user?.email) {
       await sendCompletionEmail(
-       "amrinder02.2000@gmail.com",
+        user.email,
         trackId,
         0,
         0,
