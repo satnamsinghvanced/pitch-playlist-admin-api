@@ -12,6 +12,7 @@ import mongoose from "mongoose";
 import submittedTracks from "../../../models/submittedTracks/index.js";
 import pLimit from "p-limit";
 import admin from "../../../models/admin/index.js"
+import { sendCompletionEmail } from "../../helpers/sendCompletionEmail.js";
 async function withRetry(fn, retries = 2, delayMs = 1000) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
