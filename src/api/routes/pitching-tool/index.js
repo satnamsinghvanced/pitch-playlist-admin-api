@@ -329,7 +329,7 @@ router.post("/submit-song", auth, async (req, res) => {
       userId,
       spotifyId,
       tracksIds: savedTrackIds, // all IDs in one array
-      playlistUrl, // all playlist URLs
+      playlistUrl :playlistUrls, // all playlist URLs
     }).save();
 
     // ✅ Send completion email
