@@ -226,7 +226,7 @@ router.post("/submit-song", auth, async (req, res) => {
 //   }
 // }
 
- async function processSubmission({
+async function processSubmission({
   selectedPlaylistsIds,
   userId,
   spotifyId,
@@ -235,11 +235,11 @@ router.post("/submit-song", auth, async (req, res) => {
 }) {
   try {
     const totalPlaylists = selectedPlaylistsIds.length;
+    const chunkSize = 100; // process playlists in batches
+    const limit = pLimit(2); // max 2 concurrent requests per batch
+
     const savedTrackIds = [];
     const playlistUrls = [];
-    const batchSize = 100; // memory-friendly batch size
-    const concurrency = 2;
-    const limit = pLimit(concurrency);
 
     // Fetch track + artist once
     const track = (await withRetry(() =>
@@ -265,8 +265,8 @@ router.post("/submit-song", auth, async (req, res) => {
       ]);
 
     // Process playlists in batches
-    for (let i = 0; i < totalPlaylists; i += batchSize) {
-      const batch = selectedPlaylistsIds.slice(i, i + batchSize);
+    for (let i = 0; i < totalPlaylists; i += chunkSize) {
+      const batch = selectedPlaylistsIds.slice(i, i + chunkSize);
 
       const tasks = batch.map((playlistId) =>
         limit(async () => {
@@ -307,8 +307,8 @@ router.post("/submit-song", auth, async (req, res) => {
                 });
 
                 const saved = await newSong.save();
-                savedTrackIds.push(saved._id); // store only _id
-                await delay(50); // let GC run
+                savedTrackIds.push(saved._id); // store only _id to save memory
+                await delay(50); // allow GC breathing room
               }),
               15000,
               playlistId
@@ -319,24 +319,34 @@ router.post("/submit-song", auth, async (req, res) => {
         })
       );
 
-      await Promise.allSettled(tasks); // wait for this batch
+      await Promise.allSettled(tasks); // wait for batch
     }
 
-    // ✅ Save a single SubmittedTracks document
+    // Convert arrays into Map-like objects for Mongoose
+    const chunkedTracksIds = {};
+    const chunkedPlaylistUrls = {};
+
+    for (let i = 0; i < savedTrackIds.length; i += chunkSize) {
+      const chunkIndex = `chunk-${i / chunkSize}`;
+      chunkedTracksIds[chunkIndex] = savedTrackIds.slice(i, i + chunkSize);
+      chunkedPlaylistUrls[chunkIndex] = playlistUrls.slice(i, i + chunkSize);
+    }
+
+    // Save single SubmittedTracks document
     await new SubmittedTracks({
       trackId,
       totalSubmitted: totalPlaylists,
       userId,
       spotifyId,
-      tracksIds: savedTrackIds, // all IDs in one array
-      playlistUrl :playlistUrls, // all playlist URLs
+      tracksIds: chunkedTracksIds,
+      playlistUrl: chunkedPlaylistUrls,
     }).save();
 
-    // ✅ Send completion email
+    // Send completion email
     const user = await admin.findById(userId);
     if (user?.email) {
       await sendCompletionEmail(
-       "amrinder02.2000@gmail.com",
+        "amrinder02.2000@gmail.com",
         track.name,
         totalPlaylists,
         savedTrackIds.length,
@@ -351,7 +361,7 @@ router.post("/submit-song", auth, async (req, res) => {
     const user = await admin.findById(userId);
     if (user?.email) {
       await sendCompletionEmail(
-        "amrinder02.2000@gmail.com",
+       "amrinder02.2000@gmail.com",
         trackId,
         0,
         0,
