@@ -11,6 +11,7 @@ import track from "../../../models/track/index.js";
 import mongoose from "mongoose";
 import submittedTracks from "../../../models/submittedTracks/index.js";
 import pLimit from "p-limit";
+import admin from "../../../models/admin/index.js"
 async function withRetry(fn, retries = 2, delayMs = 1000) {
   let lastErr;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -47,7 +48,7 @@ router.post("/submit-song", auth, async (req, res) => {
     const io = req.app.get("io");
     const authHeader = req.header("SpotifyToken");
     const { trackId, playlistIds, submissionAmount, userId } = req.body;
-  const userProfileResponse = await axios({
+     const userProfileResponse = await axios({
       url: "https://api.spotify.com/v1/me",
       method: "get",
       headers: { Authorization: authHeader },
@@ -61,7 +62,7 @@ router.post("/submit-song", auth, async (req, res) => {
 
     // ✅ Respond immediately
     res.status(202).json({
-      msg: "Submission started. You will receive progress updates.",
+      msg: "Submission started. You will receive email when its updates.",
       status: "accepted",
     });
 
@@ -89,34 +90,27 @@ async function processSubmission({
   spotifyId,
   trackId,
   authHeader,
-  io,
 }) {
   try {
-    const savedTracks = [];
-    const playlistUrl = [];
     const totalPlaylists = selectedPlaylistsIds.length;
-    let completedCount = 0;
+    const savedTrackIds = [];
+    const playlistUrls = [];
+    const chunkSize = 100; 
+    const limit = pLimit(2); 
 
-    // ✅ Fetch track + artist with retry
-    const track = await withRetry(
-      () =>
-        axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
-          headers: { Authorization: authHeader },
-          timeout: 10000,
-        }),
-      2
-    ).then((r) => r.data);
+    const track = (await withRetry(() =>
+      axios.get(`https://api.spotify.com/v1/tracks/${trackId}`, {
+        headers: { Authorization: authHeader },
+        timeout: 10000,
+      })
+    )).data;
 
-    const artist = await withRetry(
-      () =>
-        axios.get(`https://api.spotify.com/v1/artists/${track.artists[0].id}`, {
-          headers: { Authorization: authHeader },
-          timeout: 10000,
-        }),
-      2
-    ).then((r) => r.data);
-
-    const limit = pLimit(2);
+    const artist = (await withRetry(() =>
+      axios.get(`https://api.spotify.com/v1/artists/${track.artists[0].id}`, {
+        headers: { Authorization: authHeader },
+        timeout: 10000,
+      })
+    )).data;
 
     const withTimeout = (promise, ms, playlistId) =>
       Promise.race([
@@ -126,106 +120,108 @@ async function processSubmission({
         ),
       ]);
 
-    const tasks = selectedPlaylistsIds.map((playlistId) =>
-      limit(async () => {
-        try {
-          await withTimeout(
-            withRetry(async () => {
-              const singlePlaylist = await PlaylistModel.findById(playlistId);
-              if (!singlePlaylist) return;
+    // Process playlists in concurrent but memory-safe batches
+    for (let i = 0; i < totalPlaylists; i += chunkSize) {
+      const batch = selectedPlaylistsIds.slice(i, i + chunkSize);
 
-              if (singlePlaylist.playlistUrl) {
-                playlistUrl.push(singlePlaylist.playlistUrl);
-              }
+      const tasks = batch.map((playlistId) =>
+        limit(async () => {
+          try {
+            await withTimeout(
+              withRetry(async () => {
+                const singlePlaylist = await PlaylistModel.findById(playlistId);
+                if (!singlePlaylist) throw new Error("Playlist not found");
 
-              singlePlaylist.totalSubmissions =
-                (singlePlaylist.totalSubmissions || 0) + 1;
-              await singlePlaylist.save();
+                if (singlePlaylist.playlistUrl) playlistUrls.push(singlePlaylist.playlistUrl);
 
-              const newSong = new Track({
-                playlist: playlistId,
-                spotifyId,
-                track: {
-                  artistName: artist?.name,
-                  artists: track?.artists,
-                  artistsArr: [
-                    {
-                      artistName: artist?.name,
-                      artistId: artist?.id,
-                      artistUrl: artist?.external_urls.spotify,
-                      totalFollowers: artist?.followers.total,
-                    },
-                  ],
-                  trackImageUrl: track?.album.images[1]?.url,
-                  trackName: track?.name,
-                  preview_url: track?.preview_url,
-                  trackId,
-                  trackUrl: track?.external_urls.spotify,
-                  uri: track?.uri,
-                },
-                status: "pending",
-              });
+                singlePlaylist.totalSubmissions =
+                  (singlePlaylist.totalSubmissions || 0) + 1;
+                await singlePlaylist.save();
 
-              const saved = await newSong.save();
-              savedTracks.push(saved);
+                const newSong = new Track({
+                  playlist: playlistId,
+                  spotifyId,
+                  track: {
+                    artistName: artist?.name,
+                    artists: track?.artists,
+                    artistsArr: [
+                      {
+                        artistName: artist?.name,
+                        artistId: artist?.id,
+                        artistUrl: artist?.external_urls.spotify,
+                        totalFollowers: artist?.followers.total,
+                      },
+                    ],
+                    trackImageUrl: track?.album.images[1]?.url,
+                    trackName: track?.name,
+                    preview_url: track?.preview_url,
+                    trackId,
+                    trackUrl: track?.external_urls.spotify,
+                    uri: track?.uri,
+                  },
+                  status: "pending",
+                });
 
-              await delay(500);
-            }),
-            15000,
-            playlistId
-          );
-        } catch (err) {
-          console.error(`❌ Playlist ${playlistId} failed:`, err.message);
-        } finally {
-          completedCount++;
-          io.to(userId).emit("submission-progress", {
-            userId,
-            progress: completedCount,
-            total: totalPlaylists,
-            percentage: Math.round((completedCount / totalPlaylists) * 100),
-            playlistId,
-          });
-        }
-      })
-    );
+                const saved = await newSong.save();
+                savedTrackIds.push(saved._id); // store only _id to save memory
+                await delay(50); // give GC breathing room
+              }),
+              15000,
+              playlistId
+            );
+          } catch (err) {
+            console.error(`❌ Playlist ${playlistId} failed:`, err.message);
+          }
+        })
+      );
 
-    await Promise.allSettled(tasks);
-
-    const tracksIds = savedTracks.map((val) => val._id);
-    const chunkedTracksIds = {};
-    const chunkedPlaylistUrls = {};
-
-    for (let i = 0; i < tracksIds.length; i += 100) {
-      chunkedTracksIds[`chunk-${i / 100}`] = tracksIds.slice(i, i + 100);
-      chunkedPlaylistUrls[`chunk-${i / 100}`] = playlistUrl.slice(i, i + 100);
+      await Promise.allSettled(tasks); // wait for batch to finish
     }
 
-    await new SubmittedTracks({
-      trackId,
-      totalSubmitted: totalPlaylists,
-      userId,
-      spotifyId,
-      tracksIds: chunkedTracksIds,
-      playlistUrl: chunkedPlaylistUrls,
-    }).save();
+    // Save SubmittedTracks in chunks
+    for (let i = 0; i < savedTrackIds.length; i += chunkSize) {
+      const chunkedTrackIds = savedTrackIds.slice(i, i + chunkSize);
+      const chunkedPlaylistUrls = playlistUrls.slice(i, i + chunkSize);
 
-    io.to(userId).emit("submission-complete", {
-      userId,
-      total: totalPlaylists,
-      success: savedTracks.length,
-      failed: totalPlaylists - savedTracks.length,
-    });
+      await new SubmittedTracks({
+        trackId,
+        totalSubmitted: totalPlaylists,
+        userId,
+        spotifyId,
+        tracksIds: { [`chunk-${i / chunkSize}`]: chunkedTrackIds },
+        playlistUrl: { [`chunk-${i / chunkSize}`]: chunkedPlaylistUrls },
+      }).save();
+    }
+
+    // Send completion email
+    const user = await admin.findById(userId);
+    if (user?.email) {
+      await sendCompletionEmail(
+       "amrinder02.2000@gmail.com",
+        track.name,
+        totalPlaylists,
+        savedTrackIds.length,
+        totalPlaylists - savedTrackIds.length,
+        user.firstName || "Admin"
+      );
+    }
 
     console.log("✅ Submission completed successfully.");
   } catch (error) {
     console.error("❌ Background processing failed:", error.message);
-    io.to(userId).emit("submission-complete", {
-      userId,
-      total: selectedPlaylistsIds.length,
-      success: 0,
-      failed: selectedPlaylistsIds.length,
-      error: error.message,
-    });
+    // optional: send failure email
+    const user = await admin.findById(userId);
+    if (user?.email) {
+      await sendCompletionEmail(
+       "amrinder02.2000@gmail.com",
+        trackId,
+        0,
+        0,
+        0,
+        user.firstName || "Admin",
+        error.message
+      );
+    }
   }
 }
 
