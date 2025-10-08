@@ -4,7 +4,7 @@ import routs from "./src/api/routes/index.js";
 import config from "./config.js";
 import cookieParser from "cookie-parser";
 import "./src/db/connection.js";
-// import "./src/middleware/cronJobs.js";
+import "./src/middleware/cronJobs.js";
 // import "./scripts/generate-sitemap.js";
 const app = express();
 let { PRODUCTION_PORT } = config;
