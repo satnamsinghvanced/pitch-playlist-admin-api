@@ -130,8 +130,8 @@ cron.schedule("0 0 * * 1", async () => {
   }
 });
 
-cron.schedule("30 11 * * *", async () => {
-  console.log("Running a task at 11:30 AM every day to check track status");
+cron.schedule("30 05 * * *", async () => {
+  console.log("Running a task at 05:30 AM every day to check track status");
 
   try {
     await trackStatus();
