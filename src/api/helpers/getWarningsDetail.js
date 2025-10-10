@@ -4,7 +4,6 @@ import WarningDays from "../../models/warningDays/index.js";
 import dateDifference from "./dateDifference.js";
 import moment from "moment";
 
-
 export const getWarningsDetail = async (userId, startDate, endDate) => {
   try {
     const dateFilter = {};
@@ -26,7 +25,8 @@ export const getWarningsDetail = async (userId, startDate, endDate) => {
         console.error("Invalid endDate:", endDate);
       }
     }
-    const allPlaylist = await Playlist.find({ userId });
+     const updatedFilter = { $gt: new Date("2025-05-26T00:00:00Z") };
+    const allPlaylist = await Playlist.find({ userId,createdAt: updatedFilter, });
     const warningDay = await WarningDays.find({});
     const day = warningDay[0]?.noOfDays;
     if (!allPlaylist.length) {
@@ -39,6 +39,7 @@ export const getWarningsDetail = async (userId, startDate, endDate) => {
       stillInPlaylist: false,
       ...(Object.keys(dateFilter).length && {
         removedFromPlaylist: dateFilter,
+        createdAt: updatedFilter,
       }),
     });
     const warnings = await Promise.all(
@@ -117,8 +118,6 @@ export const getWarningsDetail = async (userId, startDate, endDate) => {
 //   }
 // };
 
-
-
 export const getPlaylistWarnings = async (playlistId, dateFilter) => {
   try {
     const warningDay = await WarningDays.find({});
@@ -128,10 +127,10 @@ export const getPlaylistWarnings = async (playlistId, dateFilter) => {
       stillInPlaylist: false,
       ...(Object.keys(dateFilter).length && {
         removedFromPlaylist: dateFilter,
+        createdAt: { $gt: new Date("2025-05-26T00:00:00Z") },
       }),
     });
 
-  
     const warnings = await Promise.all(
       trackStatus.map(async (val) => {
         const startDate = val.approvedOn;
@@ -164,9 +163,10 @@ export const getTrackWarning = async (playlistId, dateFilter) => {
       stillInPlaylist: false,
       ...(Object.keys(dateFilter).length && {
         removedFromPlaylist: dateFilter,
+        createdAt: { $gt: new Date("2025-05-26T00:00:00Z") },
       }),
     });
-    const warnings = await Promise.all(
+    const warningsList = await Promise.all(
       trackStatus.map(async (val) => {
         const startDate = val.approvedOn;
         const endDate = val.removedFromPlaylist;
@@ -180,6 +180,7 @@ export const getTrackWarning = async (playlistId, dateFilter) => {
         return { ...val.toObject(), warning };
       })
     );
+    const warnings = warningsList.filter((val) => val.warning === true);
     return warnings;
   } catch (err) {
     console.error(err);
