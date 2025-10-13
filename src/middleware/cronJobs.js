@@ -103,30 +103,51 @@ cron.schedule("30 0 * * *", async () => {
   }
 });
 
+const BATCH_SIZE = 100; // Adjust based on server power
+
 cron.schedule("0 0 * * 1", async () => {
   console.log("🔄 Running weekly credit updater...");
-  const users = await User.find({});
-  const now = new Date();
 
-  for (const user of users) {
-    const activePenaltyPoints = (user.penalties || [])
-      .filter((p) => !p.expireDate || new Date(p.expireDate) > now)
-      .reduce((sum, p) => sum + (p.points || 0), 0);
+  try {
+    const users = await User.find({});
+    const now = new Date();
 
-    let credits = 20;
+    console.log(`Found ${users.length} users to update`);
 
-    if (activePenaltyPoints >= 15) {
-      credits = 5;
-    } else if (activePenaltyPoints >= 10) {
-      credits = 10;
+    for (let i = 0; i < users.length; i += BATCH_SIZE) {
+      const batch = users.slice(i, i + BATCH_SIZE);
+
+      const updates = batch.map(async (user) => {
+        try {
+          const activePenaltyPoints = (user.penalties || [])
+            .filter((p) => !p.expireDate || new Date(p.expireDate) > now)
+            .reduce((sum, p) => sum + (p.points || 0), 0);
+
+          let credits = 20;
+          if (activePenaltyPoints >= 15) {
+            credits = 5;
+          } else if (activePenaltyPoints >= 10) {
+            credits = 10;
+          }
+
+          user.userCredits = credits;
+          user.usedCredits = 0;
+          user.creditUpdateDate = now;
+
+          await user.save();
+          console.log(`✅ Updated credits for user: ${user._id}`);
+        } catch (err) {
+          console.error(`❌ Failed to update user ${user._id}: ${err.message}`);
+        }
+      });
+
+  
+      await Promise.allSettled(updates);
     }
 
-    user.userCredits = credits;
-    user.usedCredits = 0;
-    user.creditUpdateDate = now;
-
-    await user.save();
-    console.log(`⚡ Credits updated to ${credits} for user: ${user._id}`);
+    console.log("✅ Weekly credit update completed.");
+  } catch (err) {
+    console.error("❌ Weekly credit updater crashed:", err);
   }
 });
 
@@ -889,7 +910,7 @@ cron.schedule("40 0 * * 1", async () => {
   }
 });
 
-cron.schedule("5 0 * * 1", async () => {
+cron.schedule("20 0 * * 1", async () => {
   console.log(
     "?? Checking users who haven�t added a playlist within a week of registration..."
   );

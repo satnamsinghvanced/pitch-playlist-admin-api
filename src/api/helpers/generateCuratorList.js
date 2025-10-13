@@ -46,32 +46,53 @@ const generateCuratorList = async (startDate, endDate) => {
         const logNormalize = (value, max) =>
           max === 0 ? 0 : Math.log(value + 1) / Math.log(max + 1);
 
-        const responseRateRatio = safeDivide(rate.responseRate, maxResponseRate) * 0.3;
-        const feedbackDaysRatio = safeDivide(rate.feedBackGivenDaysCount, maxFeedbackGivenDaysCount) * 0.2;
-        const playlistRatio = safeDivide(rate.submittedPlaylist, rate.maxPlaylistCount) * 0.15;
-        const bonusRatio = safeDivide(rate.bonusPoint, rate.maxBonusPoint) * 0.1;
-        const compositeRatio = safeDivide(rate.responseRate, rate.feedBackGiven) *
-                               safeDivide(rate.feedBackGiven, maxUserFeedBacks) * 0.15;
-        const logFeedbackRatio = logNormalize(rate.feedBackGiven, maxUserFeedBacks) * 0.1;
-        const penaltyFactor = 1 - Math.min(safeDivide(rate.warningReceived, 15), 1);
+        const responseRateRatio =
+          safeDivide(rate.responseRate, maxResponseRate) * 0.3;
+        const feedbackDaysRatio =
+          safeDivide(rate.feedBackGivenDaysCount, maxFeedbackGivenDaysCount) *
+          0.2;
+        const playlistRatio =
+          safeDivide(rate.submittedPlaylist, rate.maxPlaylistCount) * 0.15;
+        const bonusRatio =
+          safeDivide(rate.bonusPoint, rate.maxBonusPoint) * 0.1;
+        const compositeRatio =
+          safeDivide(rate.responseRate, rate.feedBackGiven) *
+          safeDivide(rate.feedBackGiven, maxUserFeedBacks) *
+          0.15;
+        const logFeedbackRatio =
+          logNormalize(rate.feedBackGiven, maxUserFeedBacks) * 0.1;
+        const penaltyFactor =
+          1 - Math.min(safeDivide(rate.warningReceived, 15), 1);
 
-        const baseScore = responseRateRatio + feedbackDaysRatio + playlistRatio +
-                          bonusRatio + compositeRatio + logFeedbackRatio;
+        const baseScore =
+          responseRateRatio +
+          feedbackDaysRatio +
+          playlistRatio +
+          bonusRatio +
+          compositeRatio +
+          logFeedbackRatio;
 
         const finalScore = baseScore * penaltyFactor;
 
         const engagementScore = calculateEngagementScore(rate);
         const normalizedEngagementScore =
-          highestEngagementScore === 0 ? 0 : (engagementScore / highestEngagementScore) * 10;
+          highestEngagementScore === 0
+            ? 0
+            : (engagementScore / highestEngagementScore) * 10;
 
-        return { ...rate, score: finalScore, engagementScore: normalizedEngagementScore };
+        return {
+          ...rate,
+          score: finalScore,
+          engagementScore: normalizedEngagementScore,
+        };
       })
       .sort((a, b) => b.engagementScore - a.engagementScore);
 
     // Sort by score, engagementScore, feedback given
     const sortedByScore = sortedResponseRates.sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      if (b.engagementScore !== a.engagementScore) return b.engagementScore - a.engagementScore;
+      if (b.engagementScore !== a.engagementScore)
+        return b.engagementScore - a.engagementScore;
       return b.feedBackGiven - a.feedBackGiven;
     });
 
@@ -87,21 +108,24 @@ const generateCuratorList = async (startDate, endDate) => {
         const place = i + index + 1;
 
         // Fetch playlists for genres (lean to save memory)
-        const allPlaylists = await Playlist.find(
-          { playlistOwnerId: rate.userId._id, isActive: true },
-          { genres: 1 }
-        ).lean();
-
+            const allPlaylists = await Playlist.find({
+          isActive: true,
+          userId: rate.userId,
+        });
         const uniqueGenres = allPlaylists
-          .flatMap((p) => p.genres)
+          .flatMap((val) => val.genres)
           .reduce((acc, genre) => {
-            if (!acc.has(genre.id)) acc.set(genre.id, genre);
+            if (!acc.has(genre.id)) {
+              acc.set(genre.id, genre);
+            }
             return acc;
           }, new Map());
 
+
         const allGenres = Array.from(uniqueGenres.values());
 
-        const country = rate.userId.country !== "UK" ? rate.userId.country : "GB";
+        const country =
+          rate.userId.country !== "UK" ? rate.userId.country : "GB";
         const countryName = getCountryName(country);
 
         finalLeaderboard.push({

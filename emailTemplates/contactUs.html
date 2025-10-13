@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Contact Request - Pitch Playlists</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body style="margin: 0; padding: 0; font-family: 'Poppins', sans-serif; background-color: #ffffff; max-width: 550px; width: 100%">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="width: 100%;table-layout: fixed; background-color: #ffffff;">
+        <tr>
+            <td align="center">
+                <table width="390px" style="background-image: url(https://pitchplaylists.com/newsletter-images/frame.png); background-repeat: no-repeat; background-size: cover; margin: auto; padding: 20px 16px 40px;">
+                    <tr>
+                        <td align="center">
+                            <img src="https://pitchplaylists.com/newsletter-images/logo.png" alt="Logo">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 30px;">
+                            <h5 style="font-size: 24px; font-weight: 700; color: #FFFFFF; margin: 0;">New Contact Request</h5>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 20px;">
+                            <p style="font-size: 16px; font-weight: 400; color: #dddddd; line-height: 24px; margin: 0; text-align: center;">
+                                A user has submitted a contact request. Here are the details:
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding-top: 20px; padding-left: 20px; padding-right: 20px;">
+                            <div style="background-color: #1C2432A6; padding: 18px; border-radius: 10px;">
+                                <p style="color: #ffffff; font-size: 16px; margin: 0;">
+                                    <strong>Name:</strong> {{userName}}
+                                </p>
+                                <p style="color: #ffffff; font-size: 16px; margin: 0;">
+                                    <strong>Email:</strong> <a href="mailto:{{userMail}}" style="color: #ffffff; text-decoration: underline;">{{userMail}}</a>
+                                </p>
+                                <p style="color: #ffffff; font-size: 16px; margin: 0;">
+                                    <strong>Message:</strong><br> {{message}}
+                                </p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <!-- <td align="center" style="padding-top: 30px;">
+                            <a href="mailto:{{userMail}}" style="text-decoration: none;">
+                                <button style="background: linear-gradient(100deg, rgba(28,57,65,1) 20%, rgba(88,242,169,1) 100%); padding: 12.5px 24px; font-size: 14px; font-weight: 600; border-radius: 99px; color: #fff; border: 0; cursor: pointer;">
+                                    Reply to User
+                                </button>
+                            </a>
+                        </td> -->
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 30px;">
+                            <h6 style="font-size: 16px; font-weight: 600; color: #fff; margin: 0;">Stay Connected</h6>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 15px;">
+                            <table style="text-align: center; margin: 0 auto;">
+                                <tr>
+                                    <td style="padding: 0 ">
+                                        <a href="https://www.instagram.com/pitchplaylists_/" target="_blank">
+                                            <img src="https://pitchplaylists.com/newsletter-images/instagram-icon.png"
+                                                alt="Instagram" width="24">
+                                        </a>
+                                    </td>
+                                    <td style="padding: 10px 24px;">
+                                        <a href="https://discord.com/invite/mksG8CJpae" target="_blank">
+                                            <img src="https://pitchplaylists.com/newsletter-images/git-icon.png"
+                                                alt="Discord" width="28">
+                                        </a>
+                                    </td>
+                                    <td style="padding: 0 ">
+                                        <a href="https://www.facebook.com/profile.php?id=61559028706610" target="_blank">
+                                            <img src="https://pitchplaylists.com/newsletter-images/facebook-icon.png"
+                                                alt="Facebook" width="25">
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 20px;">
+                            <a href="mailto:support@pitchplaylists.com" style="color: #FFFFFFE5; text-decoration: underline; font-size: 14px;">
+                                contact@pitchplaylists.com
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 10px;">
+                            <p style="color: #FFFFFFE5; font-size: 10px;">This notification was sent to the admin.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

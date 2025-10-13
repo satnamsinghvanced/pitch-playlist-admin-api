@@ -88,17 +88,18 @@ const generateCuratorListYear = async (startDate, endDate) => {
         const place = i + index + 1;
 
         // Fetch playlists for genres (lean to save memory)
-        const allPlaylists = await Playlist.find(
-          { playlistOwnerId: rate.userId._id, isActive: true },
-          { genres: 1 }
-        ).lean();
-
-        const uniqueGenres = allPlaylists
-          .flatMap((p) => p.genres)
-          .reduce((acc, genre) => {
-            if (!acc.has(genre.id)) acc.set(genre.id, genre);
-            return acc;
-          }, new Map());
+            const allPlaylists = await Playlist.find({
+               isActive: true,
+               userId: rate.userId,
+             });
+             const uniqueGenres = allPlaylists
+               .flatMap((val) => val.genres)
+               .reduce((acc, genre) => {
+                 if (!acc.has(genre.id)) {
+                   acc.set(genre.id, genre);
+                 }
+                 return acc;
+               }, new Map());
 
         const allGenres = Array.from(uniqueGenres.values());
 

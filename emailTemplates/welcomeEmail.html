@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
+        rel="stylesheet">
+</head>
+<style>
+    * {
+        font-family: "Poppins", serif;
+    }
+</style>
+
+<body style="margin: 0 auto; padding: 0; max-width: 550px; width: 100%">
+    <table border="0" cellpadding="0" cellspacing="0" style="width: 100%;table-layout: fixed;background-image: url(https://pitchplaylists.com/newsletter-images/frame.png);  background-repeat: no-repeat; background-size: cover;
+
+
+
+ margin: auto; padding: 20px 16px 40px 16px;">
+        <tr>
+            <td align="center">
+                <table>
+                    <tr>
+                        <td align="center" style="padding: 0;">
+                            <img src="https://pitchplaylists.com/newsletter-images/logo.png" alt="">
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 30px !important; padding: 0; ">
+                            <h5 style="font-size: 24px; font-weight: 700; color: #FFFFFF; margin: 0; padding: 0; ">Hi,
+                                {{userName}}!</h5>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 30px !important; padding: 0;">
+                            <h6
+                                style="font-size: 24px; font-weight: 700; color: #FFFFFF; margin: 0; padding: 0; line-height: 28px; ">
+                                Welcome to Pitchplaylists!</h6>
+                            <p
+                                style="background: linear-gradient(90deg,  #1B76FF, #2BFAA3); -webkit-background-clip: text; background-clip: text; color: transparent;font-size: 16px; font-weight: 700; line-height: 20px; margin: 0; padding: 0; padding-top: 8px !important; ">
+                                platform where artists and curators connect!</p>
+                    </tr>
+                    <tr>
+                        <td style="padding-top: 30px;">
+                            <div style="padding: 9px 9px 11px 8px; background-color: #1C2432A6; border-radius: 10px;">
+                                <h6
+                                    style="font-size: 24px; font-weight: 700; color: #FFFFFF; margin: 0; padding: 0; line-height: 28px; padding-bottom: 14px !important; ">
+                                    🎸 For Artists</h6>
+                                <p
+                                    style="font-size: 16px; font-weight: 400; color: #dddddd;line-height: 21px; margin: 0; padding: 0; padding-left: 10px !important;">
+                                    <img src="https://em-content.zobj.net/source/apple/391/check-mark-button_2705.png" alt="tick" style="width: 16px; height: 15px; ">
+                                     Submit your songs to 20 playlists per week for free and get your music heard!</p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding-top: 20px;">
+                            <div style="padding: 9px 9px 11px 8px; background-color: #1C2432A6; border-radius: 10px;">
+                                <h6
+                                    style="font-size: 24px; font-weight: 700; color: #FFFFFF; margin: 0; padding: 0; line-height: 28px; padding-bottom: 14px !important; ">
+                                    ⭐ For Curators</h6>
+                                    <p style="font-size: 16px; font-weight: 400; color: #dddddd; line-height: 21px; margin: 0; padding: 0; padding-left: 10px !important;">
+                                        <img src="https://em-content.zobj.net/source/apple/391/check-mark-button_2705.png" alt="tick" style="width: 16px; height: 15px; ">
+                                        Discover fresh talent and grow your playlists with submission gates.
+                                    </p>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 30px !important; padding: 0;">
+                            <p
+                                style="margin: 0px ; padding: 0; font-size: 15px;font-weight: 700;line-height: 18px; color: #ffffff; ">
+                                Ready to dive in?</p>
+                            <a href={{dashboardLink}} style="text-decoration: none;">
+                                <button
+                                    style="background: #1ED760; padding: 16px 20px; font-size: 18px;font-weight: 600;list-style: 27px;border-radius: 99px; color: #fff; border: 0; display: flex ; align-items: center;gap: 12px; margin-top: 24px; ">
+                                    <svg style="margin-left: 12px;" xmlns="http://www.w3.org/2000/svg" width="32"
+                                        height="32" viewBox="0 0 32 32" fill="none">
+                                        <path
+                                            d="M16.5891 1.44493C8.40374 1.1224 1.50487 7.43851 1.18087 15.5527C0.855514 23.6669 7.2284 30.5044 15.4124 30.8269C23.5978 31.1494 30.4953 24.8333 30.8207 16.7192C31.1447 8.60497 24.7732 1.76611 16.5891 1.44493ZM22.8495 22.9842C22.6651 23.3067 22.3059 23.468 21.9561 23.4196C21.849 23.4048 21.7419 23.3699 21.6416 23.3134C19.6814 22.2074 17.5449 21.4871 15.2918 21.1727C13.0387 20.8582 10.7843 20.9671 8.59218 21.4952C8.11635 21.6094 7.63781 21.3205 7.52258 20.8488C7.40735 20.3771 7.69881 19.9027 8.17464 19.7885C10.585 19.208 13.0631 19.0884 15.5385 19.4337C18.0139 19.7791 20.3619 20.5706 22.5187 21.7868C22.943 22.0274 23.0922 22.5622 22.8509 22.9842H22.8495ZM24.7989 19.1246C24.4966 19.6783 23.7971 19.8853 23.2386 19.5856C20.9448 18.356 18.4613 17.5483 15.8571 17.1855C13.2529 16.8226 10.6419 16.9207 8.09466 17.4757C7.95638 17.5053 7.81946 17.5107 7.68661 17.4919C7.22433 17.4274 6.82849 17.086 6.72275 16.6063C6.58583 15.9908 6.97896 15.382 7.59985 15.2463C10.4155 14.6321 13.3017 14.5233 16.1784 14.9238C19.0537 15.3242 21.7989 16.2165 24.3339 17.5765C24.8938 17.8762 25.1012 18.5683 24.7989 19.1233V19.1246ZM26.9598 14.7733C26.6751 15.3162 26.0827 15.597 25.5052 15.5164C25.3493 15.4949 25.1961 15.4465 25.0484 15.3713C22.3777 13.9938 19.5011 13.084 16.4983 12.6661C13.4955 12.2482 10.4765 12.3368 7.52664 12.9308C6.75935 13.0854 6.01239 12.5935 5.85649 11.8342C5.70059 11.0736 6.19676 10.3332 6.96269 10.1786C10.2298 9.52148 13.5701 9.42338 16.8928 9.88566C20.2155 10.3479 23.3985 11.3558 26.3566 12.8811C27.0506 13.2386 27.3204 14.0865 26.9598 14.7746V14.7733Z"
+                                            fill="white" />
+                                    </svg> Go to Pitchplaylists
+                                </button>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 30px !important; padding: 0;">
+                            <div style="width: 100%; height: 1px; background-color: #ffffff7e; "></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center" style="padding-top: 28px !important; padding: 0;">
+                            <h6
+                                style="margin: 0; padding:0; font-size: 16px;font-weight: 600;line-height: 24px;color: #fff; ">
+                                Stay Connected</h6>
+                            <p
+                                style="margin: 0; padding:0; font-size: 14px;font-weight: 500;line-height: 21px; color: #fff;  padding-top: 8px !important;max-width: 280px;">
+                                Follow us on social media to stay updated with the latest news, updates, and exclusive
+                                offers!</p>
+                        </td>
+                    </tr>
+
+                    <table style="text-align: center; margin: 0 auto;">
+                        <tr>
+                            <td style="padding: 0 ">
+                                <a href="https://www.instagram.com/pitchplaylists_/" target="_blank">
+                                    <img src="https://pitchplaylists.com/newsletter-images/instagram-icon.png"
+                                        alt="Instagram" width="24">
+                                </a>
+                            </td>
+                            <td style="padding: 10px 24px;">
+                                <a href="https://discord.com/invite/mksG8CJpae" target="_blank">
+                                    <img src="https://pitchplaylists.com/newsletter-images/git-icon.png"
+                                        alt="Discord" width="28">
+                                </a>
+                            </td>
+                            <td style="padding: 0 ">
+                                <a href="https://www.facebook.com/profile.php?id=61559028706610" target="_blank">
+                                    <img src="https://pitchplaylists.com/newsletter-images/facebook-icon.png"
+                                        alt="Facebook" width="25">
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <tr>
+                        <td align="center" style="padding-top: 10px !important; padding: 0;">
+                            <a href="https://pitchplaylists.com/submit-song">
+                                <p
+                                    style="font-size: 14px;line-height: 21px;font-weight: 500;text-decoration: underline;color: #FFFFFFE5;margin: 0;padding: 0;">
+                                    Submit a track
+                                </p>
+                            </a>
+                            <a href="https://pitchplaylists.com/add-playlist">
+                                <p
+                                    style="font-size: 14px;line-height: 21px;font-weight: 500;text-decoration: underline;color: #FFFFFFE5;margin: 0;padding: 0;padding-top: 10px; ">
+                                    Submit a playlist
+                                </p>
+                            </a>
+                            <a href="https://pitchplaylists.com/top-curator-chart">
+                                <p
+                                    style="font-size: 14px;line-height: 21px;font-weight: 500;text-decoration: underline;color: #FFFFFFE5;margin: 0;padding: 0;padding-top: 10px; ">
+                                    Reviews
+                                </p>
+                            </a>
+                            <a href="https://pitchplaylists.com/faq">
+                                <p
+                                    style="font-size: 14px;line-height: 21px;font-weight: 500;text-decoration: underline;color: #FFFFFFE5;margin: 0;padding: 0;padding-top: 10px; ">
+                                    FAQ
+                                </p>
+                            </a>
+                            <div style="margin: 0;padding: 0; width: 100%; height: 1px ; background-color: #FFFFFF1A;">
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align="center">
+                            <p
+                                style="margin: 0;padding: 0;color: #FFFFFFE5; padding-top:12px; font-size: 10px; line-height: 15px;font-weight: 500;">
+                                This email was sent to
+                                <a href="mailto:{{userMail}}"
+                                    style="color: #FFFFFFE5; text-decoration: none;">{{userMail}}</a>
+                            </p>
+                            <p
+                                style="margin: 0;padding: 0;color: #FFFFFFE5; padding-top:12px; font-size: 10px; line-height: 15px;font-weight: 500;">
+                                You're receiving this email because you joined our platform with your Spotify account
+                            </p>
+                            <p style="margin: 0; padding: 0; color: #FFFFFFE5; padding-top: 18px; font-size: 10px; 
+                            line-height: 15px; font-weight: 500; text-decoration: underline;">
+                                <a href="{{Unsubscribe}}" style="color: #FFFFFFE5; text-decoration: underline;">
+                                    Unsubscribe
+                                </a>
+                            </p>
+
+                        </td>
+
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>
