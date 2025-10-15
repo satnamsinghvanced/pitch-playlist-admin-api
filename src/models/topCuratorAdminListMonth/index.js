@@ -57,11 +57,11 @@ const topCuratorAdminListSchema = new mongoose.Schema(
         },
       },
     ],
-    feedbackGivenDays: {
-      type: String,
+     feedbackGivenDays: {
+      type: Number,
     },
     warningReceived:{
-      type:String
+      type:Number
     }
   },
   { timestamps: true }
