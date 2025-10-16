@@ -103,53 +103,53 @@ cron.schedule("30 0 * * *", async () => {
   }
 });
 
-const BATCH_SIZE = 100; // Adjust based on server power
+// const BATCH_SIZE = 100; // Adjust based on server power
 
-cron.schedule("0 0 * * 1", async () => {
-  console.log("🔄 Running weekly credit updater...");
+// cron.schedule("*/10 * * * *", async () => {
+//   console.log("🔄 Running weekly credit updater...");
 
-  try {
-    const users = await User.find({});
-    const now = new Date();
+//   try {
+//     const users = await User.find({});
+//     const now = new Date();
 
-    console.log(`Found ${users.length} users to update`);
+//     console.log(`Found ${users.length} users to update`);
 
-    for (let i = 0; i < users.length; i += BATCH_SIZE) {
-      const batch = users.slice(i, i + BATCH_SIZE);
+//     for (let i = 0; i < users.length; i += BATCH_SIZE) {
+//       const batch = users.slice(i, i + BATCH_SIZE);
 
-      const updates = batch.map(async (user) => {
-        try {
-          const activePenaltyPoints = (user.penalties || [])
-            .filter((p) => !p.expireDate || new Date(p.expireDate) > now)
-            .reduce((sum, p) => sum + (p.points || 0), 0);
+//       const updates = batch.map(async (user) => {
+//         try {
+//           const activePenaltyPoints = (user.penalties || [])
+//             .filter((p) => !p.expireDate || new Date(p.expireDate) > now)
+//             .reduce((sum, p) => sum + (p.points || 0), 0);
 
-          let credits = 20;
-          if (activePenaltyPoints >= 15) {
-            credits = 5;
-          } else if (activePenaltyPoints >= 10) {
-            credits = 10;
-          }
+//           let credits = 20;
+//           if (activePenaltyPoints >= 15) {
+//             credits = 5;
+//           } else if (activePenaltyPoints >= 10) {
+//             credits = 10;
+//           }
 
-          user.userCredits = credits;
-          user.usedCredits = 0;
-          user.creditUpdateDate = now;
+//           user.userCredits = credits;
+//           user.usedCredits = 0;
+//           user.creditUpdateDate = now;
 
-          await user.save();
-          console.log(`✅ Updated credits for user: ${user._id}`);
-        } catch (err) {
-          console.error(`❌ Failed to update user ${user._id}: ${err.message}`);
-        }
-      });
+//           await user.save();
+//           console.log(`✅ Updated credits for user: ${user._id}`);
+//         } catch (err) {
+//           console.error(`❌ Failed to update user ${user._id}: ${err.message}`);
+//         }
+//       });
 
   
-      await Promise.allSettled(updates);
-    }
+//       await Promise.allSettled(updates);
+//     }
 
-    console.log("✅ Weekly credit update completed.");
-  } catch (err) {
-    console.error("❌ Weekly credit updater crashed:", err);
-  }
-});
+//     console.log("✅ Weekly credit update completed.");
+//   } catch (err) {
+//     console.error("❌ Weekly credit updater crashed:", err);
+//   }
+// });
 
 cron.schedule("30 05 * * *", async () => {
   console.log("Running a task at 05:30 AM every day to check track status");
@@ -1335,7 +1335,7 @@ function formatDate(date) {
 //   }
 // });
 let cronRunning = false;
-cron.schedule("0 3 * * *", async () => {
+cron.schedule("* */3 * * *", async () => {
   if (cronRunning) return; // Prevent overlapping executions
   cronRunning = true;
 

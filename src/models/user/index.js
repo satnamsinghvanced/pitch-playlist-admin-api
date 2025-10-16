@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 const penaltySchema = new mongoose.Schema({
   points: { type: Number, required: true },
   startDate: { type: Date, default: Date.now },
-  expireDate: { type: Date }, 
+  expireDate: { type: Date },
 });
 const userSchema = new mongoose.Schema(
   {
@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-     penalties: [penaltySchema], 
+    penalties: [penaltySchema],
     // creditPenaltyStart: {
     //   type: Date,
     //   default: null,
@@ -98,6 +98,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    lastRefillClicked: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );
