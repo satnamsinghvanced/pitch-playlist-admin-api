@@ -1335,7 +1335,7 @@ function formatDate(date) {
 //   }
 // });
 let cronRunning = false;
-cron.schedule("* */3 * * *", async () => {
+cron.schedule("0 5 * * *", async () => {
   if (cronRunning) return; // Prevent overlapping executions
   cronRunning = true;
 
