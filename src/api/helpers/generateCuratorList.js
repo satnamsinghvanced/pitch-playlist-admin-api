@@ -6,156 +6,121 @@ import curatorResponse from "./curatorResponse.js";
 
 const generateCuratorList = async (startDate, endDate) => {
   try {
-    // Clear old leaderboard
-    await TopCuratorAdminListJs.deleteMany({});
+    const result = await TopCuratorAdminListJs.deleteMany({});
+    console.log(`✅ Deleted ${result.deletedCount} documents from TopCuratorAdminListJs.`);
 
-    // Get user stats (memory-safe)
     const responseRate = await curatorResponse(startDate, endDate);
 
-    // Calculate scores
-    const calculateEngagementScore = (rate) => {
-      return (
-        (rate.responseRate / 10) * 0.5 +
-        (Math.log(rate.feedBackGiven + 1) / Math.log(101)) * 10 * 0.3 +
-        (rate.feedBackGivenDaysCount / 7) * 10 * 0.2
-      );
-    };
 
-    const maxResponseRate = responseRate?.reduce(
-      (max, rate) => Math.max(max, rate.responseRate || 0),
-      0
-    );
-    const maxFeedbackGivenDaysCount = responseRate?.reduce(
-      (max, rate) => Math.max(max, rate.feedBackGivenDaysCount || 0),
-      0
-    );
-    const maxUserFeedBacks = responseRate?.reduce(
-      (max, rate) => Math.max(max, rate.feedBackGiven || 0),
-      0
-    );
+    const maxResponseRate = Math.max(...responseRate.map(r => r.responseRate || 0), 1);
+    const maxFeedbackGivenDaysCount = Math.max(...responseRate.map(r => r.feedBackGivenDaysCount || 0), 1);
+    const maxUserFeedBacks = Math.max(...responseRate.map(r => r.feedBackGiven || 0), 1);
+    const maxPlaylistCount = Math.max(...responseRate.map(r => r.maxPlaylistCount || 0), 1);
+    const maxBonusPoint = Math.max(...responseRate.map(r => r.maxBonusPoint || 0), 1);
+
+    const safeDivide = (numerator, denominator) => denominator === 0 ? 0 : numerator / denominator;
+    const logNormalize = (value, max) => max === 0 ? 0 : Math.log(value + 1) / Math.log(max + 1);
+
     const highestEngagementScore = Math.max(
-      ...responseRate?.map((r) => calculateEngagementScore(r))
+      ...responseRate.map(rate => {
+        const rateResponseRate = rate.responseRate || 0;
+        const feedBackGivenDaysCount = rate.feedBackGivenDaysCount || 0;
+        const feedBackGiven = rate.feedBackGiven || 0;
+
+        return (
+          (rateResponseRate / 10) * 0.5 +
+          (Math.log(feedBackGiven + 1) / Math.log(101)) * 10 * 0.3 +
+          (feedBackGivenDaysCount / 7) * 10 * 0.2
+        );
+      }),
+      1
     );
 
-    // Compute normalized scores
-    const sortedResponseRates = responseRate
-      ?.map((rate) => {
-        const safeDivide = (numerator, denominator) =>
-          denominator === 0 ? 0 : numerator / denominator;
+    const sortedResponseRates = responseRate.map(rate => {
 
-        const logNormalize = (value, max) =>
-          max === 0 ? 0 : Math.log(value + 1) / Math.log(max + 1);
+      const responseRateValue = rate.responseRate || 0;
+      const feedbackDaysValue = rate.feedBackGivenDaysCount || 0;
+      const submittedPlaylist = rate.submittedPlaylist || 0;
+      const maxPlaylistCountValue = rate.maxPlaylistCount || 1;
+      const bonusPoint = rate.bonusPoint || 0;
+      const maxBonusPointValue = rate.maxBonusPoint || 1;
+      const feedBackGiven = rate.feedBackGiven || 0;
+      const maxUserFeedBacksValue = maxUserFeedBacks || 1;
+      const warningReceived = rate.warningReceived || 0;
 
-        const responseRateRatio =
-          safeDivide(rate.responseRate, maxResponseRate) * 0.3;
-        const feedbackDaysRatio =
-          safeDivide(rate.feedBackGivenDaysCount, maxFeedbackGivenDaysCount) *
-          0.2;
-        const playlistRatio =
-          safeDivide(rate.submittedPlaylist, rate.maxPlaylistCount) * 0.15;
-        const bonusRatio =
-          safeDivide(rate.bonusPoint, rate.maxBonusPoint) * 0.1;
-        const compositeRatio =
-          safeDivide(rate.responseRate, rate.feedBackGiven) *
-          safeDivide(rate.feedBackGiven, maxUserFeedBacks) *
-          0.15;
-        const logFeedbackRatio =
-          logNormalize(rate.feedBackGiven, maxUserFeedBacks) * 0.1;
-        const penaltyFactor =
-          1 - Math.min(safeDivide(rate.warningReceived, 15), 1);
+      const responseRateRatio = safeDivide(responseRateValue, maxResponseRate) * 0.3;
+      const feedbackDaysRatio = safeDivide(feedbackDaysValue, maxFeedbackGivenDaysCount) * 0.2;
+      const playlistRatio = safeDivide(submittedPlaylist, maxPlaylistCountValue) * 0.15;
+      const bonusRatio = safeDivide(bonusPoint, maxBonusPointValue) * 0.1;
+      const compositeRatio = safeDivide(responseRateValue, feedBackGiven) * safeDivide(feedBackGiven, maxUserFeedBacksValue) * 0.15;
+      const logFeedbackRatio = logNormalize(feedBackGiven, maxUserFeedBacksValue) * 0.1;
+      const penaltyFactor = 1 - Math.min(safeDivide(warningReceived, 15), 1);
 
-        const baseScore =
-          responseRateRatio +
-          feedbackDaysRatio +
-          playlistRatio +
-          bonusRatio +
-          compositeRatio +
-          logFeedbackRatio;
+      const baseScore = responseRateRatio + feedbackDaysRatio + playlistRatio + bonusRatio + compositeRatio + logFeedbackRatio;
+      const weightedScore = baseScore * penaltyFactor;
 
-        const finalScore = baseScore * penaltyFactor;
-
-        const engagementScore = calculateEngagementScore(rate);
+      const engagementScore =
+        (responseRateValue / 10) * 0.5 +
+        (Math.log(feedBackGiven + 1) / Math.log(101)) * 10 * 0.3 +
+        (feedbackDaysValue / 7) * 10 * 0.2;
         const normalizedEngagementScore =
           highestEngagementScore === 0
             ? 0
             : (engagementScore / highestEngagementScore) * 10;
-
-        return {
-          ...rate,
-          score: finalScore,
-          engagementScore: normalizedEngagementScore,
-        };
-      })
-      .sort((a, b) => b.engagementScore - a.engagementScore);
-
-    // Sort by score, engagementScore, feedback given
-    const sortedByScore = sortedResponseRates.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.engagementScore !== a.engagementScore)
-        return b.engagementScore - a.engagementScore;
-      return b.feedBackGiven - a.feedBackGiven;
+      return {
+        ...rate,
+        weightedScore,
+        engagementScore:normalizedEngagementScore,
+      };
     });
 
-    // Process users in batches to avoid memory spike
-    const batchSize = 20;
-    const finalLeaderboard = [];
+  
+    const sortedByScore = sortedResponseRates.sort((a, b) => {
+      if (b.weightedScore !== a.weightedScore) return b.weightedScore - a.weightedScore;
+      if (b.engagementScore !== a.engagementScore) return b.engagementScore - a.engagementScore;
+      return (b.feedBackGiven || 0) - (a.feedBackGiven || 0);
+    });
 
-    for (let i = 0; i < sortedByScore.length; i += batchSize) {
-      const batch = sortedByScore.slice(i, i + batchSize);
-
-      for (let index = 0; index < batch.length; index++) {
-        const rate = batch[index];
-        const place = i + index + 1;
-
-        // Fetch playlists for genres (lean to save memory)
-            const allPlaylists = await Playlist.find({
-          isActive: true,
-          userId: rate.userId,
-        });
+    const topUsersWithPosition = await Promise.all(
+      sortedByScore.map(async (rate, index) => {
+        const place = index + 1;
+        const allPlaylists = await Playlist.find({ isActive: true, userId: rate.userId });
         const uniqueGenres = allPlaylists
-          .flatMap((val) => val.genres)
+          .flatMap(val => val.genres)
           .reduce((acc, genre) => {
-            if (!acc.has(genre.id)) {
-              acc.set(genre.id, genre);
-            }
+            if (!acc.has(genre.id)) acc.set(genre.id, genre);
             return acc;
           }, new Map());
 
-
         const allGenres = Array.from(uniqueGenres.values());
-
-        const country =
-          rate.userId.country !== "UK" ? rate.userId.country : "GB";
+        const country = rate?.userId?.country !== "UK" ? rate?.userId?.country : "GB";
         const countryName = getCountryName(country);
 
-        finalLeaderboard.push({
+        return {
           position: place,
           userId: rate.userId._id,
-          responseRate: rate.responseRate,
-          totalSongs: rate.submittedTracks,
-          totalPlaylist: rate.submittedPlaylist,
+          responseRate: rate.responseRate || 0,
+          totalSongs: rate.submittedTracks || 0,
+          totalPlaylist: rate.submittedPlaylist || 0,
           allGenres,
-          referral: rate.bonusPoint,
-          bouncePoint: rate.bonusPoint,
-          weightedScore: rate.score,
-          feedbackGiven: rate.feedBackGiven,
+          referral: rate.bonusPoint || 0,
+          bouncePoint: rate.bonusPoint || 0,
+          weightedScore: rate.weightedScore || 0,
+          feedbackGiven: rate.feedBackGiven || 0,
           countryName,
-          expiredTrack: rate.expiredTrack,
-          feedbackGivenDays: rate.feedBackGivenDaysCount,
-          warningReceived: rate.warningReceived,
-          engagementScore: rate.engagementScore,
-        });
-      }
-    }
+          expiredTrack: rate.expiredTrack || 0,
+          feedbackGivenDays: rate.feedBackGivenDaysCount || 0,
+          warningReceived: rate.warningReceived || 0,
+          engagementScore: rate.engagementScore || 0,
+        };
+      })
+    );
 
-    // Bulk insert final leaderboard
-    if (finalLeaderboard.length > 0) {
-      await TopCuratorAdminListJs.insertMany(finalLeaderboard);
-    }
+    await Promise.all(topUsersWithPosition.map(val => new TopCuratorAdminListJs(val).save()));
 
-    console.log("Curator leaderboard generated successfully.");
+    console.log("✅ Top curator list generated successfully.");
   } catch (err) {
-    console.error("Error in generateCuratorList:", err.message);
+    console.error("Error generating curator list:", err.message);
   }
 };
 
