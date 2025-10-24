@@ -19,6 +19,7 @@ import generateCuratorListMonth from "../api/helpers/generateCuratorListMonth.js
 import generateCuratorListSevenDays from "../api/helpers/generateCuratorListSevenDays.js";
 import generateCuratorListYear from "../api/helpers/generateCuratorListYear.js";
 import generateCuratorList from "../api/helpers/generateCuratorList.js";
+import topCurator from "../models/topCurator/index.js";
 const router = express.Router();
 
 function getNextMonday() {
@@ -103,54 +104,6 @@ cron.schedule("30 0 * * *", async () => {
   }
 });
 
-// const BATCH_SIZE = 100; // Adjust based on server power
-
-// cron.schedule("*/10 * * * *", async () => {
-//   console.log("🔄 Running weekly credit updater...");
-
-//   try {
-//     const users = await User.find({});
-//     const now = new Date();
-
-//     console.log(`Found ${users.length} users to update`);
-
-//     for (let i = 0; i < users.length; i += BATCH_SIZE) {
-//       const batch = users.slice(i, i + BATCH_SIZE);
-
-//       const updates = batch.map(async (user) => {
-//         try {
-//           const activePenaltyPoints = (user.penalties || [])
-//             .filter((p) => !p.expireDate || new Date(p.expireDate) > now)
-//             .reduce((sum, p) => sum + (p.points || 0), 0);
-
-//           let credits = 20;
-//           if (activePenaltyPoints >= 15) {
-//             credits = 5;
-//           } else if (activePenaltyPoints >= 10) {
-//             credits = 10;
-//           }
-
-//           user.userCredits = credits;
-//           user.usedCredits = 0;
-//           user.creditUpdateDate = now;
-
-//           await user.save();
-//           console.log(`✅ Updated credits for user: ${user._id}`);
-//         } catch (err) {
-//           console.error(`❌ Failed to update user ${user._id}: ${err.message}`);
-//         }
-//       });
-
-  
-//       await Promise.allSettled(updates);
-//     }
-
-//     console.log("✅ Weekly credit update completed.");
-//   } catch (err) {
-//     console.error("❌ Weekly credit updater crashed:", err);
-//   }
-// });
-
 cron.schedule("30 05 * * *", async () => {
   console.log("Running a task at 05:30 AM every day to check track status");
 
@@ -162,50 +115,82 @@ cron.schedule("30 05 * * *", async () => {
 });
 //calculate top 20 curator
 
-cron.schedule("25 0 * * 1", async () => {
+cron.schedule("35 0 * * 1", async () => {
   console.log("Running a task every Monday at midnight");
   try {
+    const result = await topCurator.deleteMany({});
+    console.log(`✅ Deleted ${result.deletedCount} documents from TopCurator.`);
+
     const { startDate, endDate } = await getStartAndEndDate();
     const responseRate = await curatorResponse(startDate, endDate);
 
-    const maxResponseRate = responseRate?.reduce((max, rate) => {
-      return Math.max(max, rate.responseRate || 0);
-    }, 0);
-    const maxFeedbackGivenDaysCount = responseRate?.reduce((max, rate) => {
-      return Math.max(max, rate.feedBackGivenDaysCount || 0);
-    }, 0);
+    const maxResponseRate = Math.max(
+      ...responseRate.map((r) => r.responseRate || 0),
+      1
+    );
+    const maxFeedbackGivenDaysCount = Math.max(
+      ...responseRate.map((r) => r.feedBackGivenDaysCount || 0),
+      1
+    );
+    const maxUserFeedBacks = Math.max(
+      ...responseRate.map((r) => r.feedBackGiven || 0),
+      1
+    );
+    const maxPlaylistCount = Math.max(
+      ...responseRate.map((r) => r.maxPlaylistCount || 0),
+      1
+    );
+    const maxBonusPoint = Math.max(
+      ...responseRate.map((r) => r.maxBonusPoint || 0),
+      1
+    );
 
-    const maxUserFeedBacks = responseRate?.reduce((max, rate) => {
-      return Math.max(max, rate.feedBackGiven || 0);
-    }, 0);
+    const safeDivide = (numerator, denominator) =>
+      denominator === 0 ? 0 : numerator / denominator;
+    const logNormalize = (value, max) =>
+      max === 0 ? 0 : Math.log(value + 1) / Math.log(max + 1);
+
+    const highestEngagementScore = Math.max(
+      ...responseRate.map((rate) => {
+        const rateResponseRate = rate.responseRate || 0;
+        const feedBackGivenDaysCount = rate.feedBackGivenDaysCount || 0;
+        const feedBackGiven = rate.feedBackGiven || 0;
+
+        return (
+          (rateResponseRate / 10) * 0.5 +
+          (Math.log(feedBackGiven + 1) / Math.log(101)) * 10 * 0.3 +
+          (feedBackGivenDaysCount / 7) * 10 * 0.2
+        );
+      }),
+      1
+    );
 
     const sortedResponseRates = responseRate
-      ?.map((rate) => {
-        const safeDivide = (numerator, denominator) =>
-          denominator === 0 ? 0 : numerator / denominator;
+      .map((rate) => {
+        const responseRateValue = rate.responseRate || 0;
+        const feedbackDaysValue = rate.feedBackGivenDaysCount || 0;
+        const submittedPlaylist = rate.submittedPlaylist || 0;
+        const maxPlaylistCountValue = rate.maxPlaylistCount || 1;
+        const bonusPoint = rate.bonusPoint || 0;
+        const maxBonusPointValue = rate.maxBonusPoint || 1;
+        const feedBackGiven = rate.feedBackGiven || 0;
+        const maxUserFeedBacksValue = maxUserFeedBacks || 1;
+        const warningReceived = rate.warningReceived || 0;
 
-        const logNormalize = (value, max) =>
-          max === 0 ? 0 : Math.log(value + 1) / Math.log(max + 1);
         const responseRateRatio =
-          safeDivide(rate.responseRate, maxResponseRate) * 0.3;
+          safeDivide(responseRateValue, maxResponseRate) * 0.3;
         const feedbackDaysRatio =
-          safeDivide(rate.feedBackGivenDaysCount, maxFeedbackGivenDaysCount) *
-          0.2;
+          safeDivide(feedbackDaysValue, maxFeedbackGivenDaysCount) * 0.2;
         const playlistRatio =
-          safeDivide(rate.submittedPlaylist, rate.maxPlaylistCount) * 0.15;
-        const bonusRatio =
-          safeDivide(rate.bonusPoint, rate.maxBonusPoint) * 0.1;
-
+          safeDivide(submittedPlaylist, maxPlaylistCountValue) * 0.15;
+        const bonusRatio = safeDivide(bonusPoint, maxBonusPointValue) * 0.1;
         const compositeRatio =
-          safeDivide(rate.responseRate, rate.feedBackGiven) *
-          safeDivide(rate.feedBackGiven, maxUserFeedBacks) *
+          safeDivide(responseRateValue, feedBackGiven) *
+          safeDivide(feedBackGiven, maxUserFeedBacksValue) *
           0.15;
-
         const logFeedbackRatio =
-          logNormalize(rate.feedBackGiven, maxUserFeedBacks) * 0.1;
-
-        const penaltyFactor =
-          1 - Math.min(safeDivide(rate.warningReceived, 15), 1);
+          logNormalize(feedBackGiven, maxUserFeedBacksValue) * 0.1;
+        const penaltyFactor = 1 - Math.min(safeDivide(warningReceived, 15), 1);
 
         const baseScore =
           responseRateRatio +
@@ -214,14 +199,24 @@ cron.schedule("25 0 * * 1", async () => {
           bonusRatio +
           compositeRatio +
           logFeedbackRatio;
+        const weightedScore = baseScore * penaltyFactor;
 
-        const finalScore = baseScore * penaltyFactor;
-        const score = finalScore;
-
-        return { ...rate, score };
+        const engagementScore =
+          (responseRateValue / 10) * 0.5 +
+          (Math.log(feedBackGiven + 1) / Math.log(101)) * 10 * 0.3 +
+          (feedbackDaysValue / 7) * 10 * 0.2;
+        const normalizedEngagementScore =
+          highestEngagementScore === 0
+            ? 0
+            : (engagementScore / highestEngagementScore) * 10;
+        return {
+          ...rate,
+          score: weightedScore,
+          engagementScore: normalizedEngagementScore,
+        };
       })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 20);
+      .sort((a, b) => b.score - a.score);
+    // .slice(0, 20);
 
     await ResponseRate.bulkWrite(
       sortedResponseRates.map((rate) => ({
@@ -232,25 +227,40 @@ cron.schedule("25 0 * * 1", async () => {
       }))
     );
 
-    const sortedByScore = sortedResponseRates.sort((a, b) => b.score - a.score);
-    const topUsersWithPosition = await Promise.all(
-      sortedByScore.map(async (rate, index) => {
-        const place = index + 1;
+  const sortedByScore = sortedResponseRates; // already sorted above
 
-        const responseRate = await ResponseRate.findOne({
-          userId: rate.userId._id,
-        });
+const topUsersWithPosition = await Promise.all(
+  sortedByScore.map(async (rate, index) => {
+    const place = index + 1;
 
-        const oldPosition = responseRate.lastWeek;
-        if (responseRate.peak > place || responseRate.peak === 0) {
-          responseRate.peak = place;
+    let responseRateDoc = await ResponseRate.findOne({
+      userId: rate.userId._id,
+    });
+
+    if (!responseRateDoc) {
+      responseRateDoc = new ResponseRate({
+        userId: rate.userId._id,
+        engagementScore: rate.engagementScore || 0,
+        responseRate: rate.responseRate,
+        totalSongs: rate.submittedTracks,
+        totalPlaylist: rate.submittedPlaylist,
+        bouncePoint: rate.bonusPoint,
+        feedbackGiven: rate.feedBackGiven,
+        peak: place,
+        weekInTopChart: place <= 20 ? 1 : 0,
+      });
+    }
+
+        const oldPosition = responseRateDoc?.lastWeek;
+        if (responseRateDoc?.peak > place || responseRateDoc?.peak === 0) {
+          responseRateDoc.peak = place;
         }
-        responseRate.lastWeek = place;
-        if (responseRate.lastWeek <= 20) {
-          responseRate.weekInTopChart += 1;
+        responseRateDoc.lastWeek = place;
+        if (responseRateDoc.lastWeek <= 20) {
+          responseRateDoc.weekInTopChart += 1;
         }
 
-        const res = await responseRate.save();
+        const res = await responseRateDoc.save();
         const allPlaylists = await Playlist.find({
           isActive: true,
           userId: rate?.userId,
@@ -846,11 +856,12 @@ cron.schedule("40 0 * * 1", async () => {
   console.log("?? Checking users eligible for weekly credit refill...");
 
   try {
-    const oneWeekAgo = moment().subtract(7, "days").toDate();
+    // const oneWeekAgo = moment().subtract(7, "days").toDate();
 
     const eligibleUsers = await User.find({
-      usedCredits: { $eq: 0 },
-      updatedAt: { $gte: oneWeekAgo },
+      // usedCredits: { $eq: 0 },
+      // updatedAt: { $gte: oneWeekAgo },
+      currentStatus: "Active",
       emailReceiver: true,
     }).lean();
 
@@ -880,8 +891,19 @@ cron.schedule("40 0 * * 1", async () => {
             `?? Refilling credits and sending email to ${user.email}`
           );
 
-          await User.updateOne({ _id: user._id }, { userCredits: 20 });
+          // await User.updateOne({ _id: user._id }, { userCredits: 20 });
 
+          const penaltyCount = user.penalties?.length || 0;
+          let credits = 20;
+          if (
+            penaltyCount >= 10 &&
+            penaltyCount < 15 &&
+            user.userCredits > 10
+          ) {
+            credits -= 10;
+          } else if (penaltyCount >= 15 && user.userCredits > 15) {
+            credits -= 15;
+          }
           await sendMail(
             user.email,
             "Your Weekly Credits Have Been Refilled",
@@ -890,6 +912,7 @@ cron.schedule("40 0 * * 1", async () => {
               userName: user.name,
               submitTrack: "https://pitchplaylists.com/submit-song",
               userMail: user.email,
+              credits: credits,
               Unsubscribe: `https://pitchplaylists.com/unsubscribe?spotifyId=${user.spotifyId}`,
             },
             "artist"
@@ -909,6 +932,7 @@ cron.schedule("40 0 * * 1", async () => {
     console.error("? Error in weekly credit refill cron job:", error);
   }
 });
+
 
 cron.schedule("20 0 * * 1", async () => {
   console.log(
@@ -1302,38 +1326,6 @@ function formatDate(date) {
   return `${d}-${m}-${y}`;
 }
 
-// cron.schedule("* * * * *", async () => {
-//   try {
-//     const now = new Date();
-//     const todayStart = new Date(now);
-//     todayStart.setHours(0, 0, 0, 0);
-
-//     const sevenDaysAgo = new Date(todayStart);
-//     sevenDaysAgo.setDate(todayStart.getDate() - 6);
-
-//     // 30 days ago
-//     const monthAgo = new Date(todayStart);
-//     monthAgo.setDate(todayStart.getDate() - 30);
-
-//     // 1 year ago
-//     const yearAgo = new Date(todayStart);
-//     yearAgo.setFullYear(todayStart.getFullYear() - 1);
-//     formatDate(sevenDaysAgo),
-//       formatDate(todayStart),
-//       formatDate(monthAgo),
-//       // formatDate(todayStart),
-//       formatDate(yearAgo),
-//       // formatDate(todayStart);
-
-//       console.log(formatDate(sevenDaysAgo),"sevenDaysAgo")
-//        console.log(formatDate(todayStart),"todayStart")
-//        console.log(formatDate(monthAgo),"monthAgo")
-//        console.log(formatDate(yearAgo),"yearAgo")
-     
-//   } catch (error) {
-//     console.error("❌ Cron job failed:", error.message);
-//   }
-// });
 let cronRunning = false;
 cron.schedule("0 5 * * *", async () => {
   if (cronRunning) return; // Prevent overlapping executions
@@ -1374,10 +1366,7 @@ cron.schedule("0 5 * * *", async () => {
     console.log("✅ Monthly curator list generated");
 
     // Yearly list
-    await generateCuratorListYear(
-      formatDate(yearAgo),
-      formatDate(todayStart)
-    );
+    await generateCuratorListYear(formatDate(yearAgo), formatDate(todayStart));
     console.log("✅ Year curator list generated");
   } catch (error) {
     console.error("❌ Cron job failed:", error.message);
@@ -1386,7 +1375,8 @@ cron.schedule("0 5 * * *", async () => {
   }
 });
 
-cron.schedule("*/10 * * * *", async () => {
+cron.schedule("*/40 * * * *", async () => {
+  console.log("running calculate response rate");
   await calculateResponseRate();
   console.log("Success Calculate response rate.");
 });
