@@ -112,7 +112,7 @@ cron.schedule("30 05 * * *", async () => {
   } catch (err) {
     console.error(err.message);
   }
-});
+})
 //calculate top 20 curator
 
 cron.schedule("35 0 * * 1", async () => {
@@ -1115,7 +1115,7 @@ const getRandomDelayForExpire = () => {
   );
 };
 
-async function sendExpirationEmail(email, name, expiryDate, attempt = 1) {
+async function sendExpirationEmail(email, name, expiryDate, spotifyId, attempt = 1) {
   try {
     await sendMail(
       email,
