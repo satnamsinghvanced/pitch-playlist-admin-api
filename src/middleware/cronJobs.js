@@ -104,8 +104,8 @@ cron.schedule("30 0 * * *", async () => {
   }
 });
 
-cron.schedule("30 05 * * *", async () => {
-  console.log("Running a task at 05:30 AM every day to check track status");
+cron.schedule("30 02 * * *", async () => {
+  console.log("Running a task at 02:30 AM every day to check track status");
 
   try {
     await trackStatus();
@@ -403,7 +403,7 @@ cron.schedule("0 2 * * *", async () => {
           const playlistData = await Playlist.findById(track.playlist);
           track.status = "expired";
           await track.save();
-          if (playlistData.totalSubmissions > 0) {
+          if (playlistData?.totalSubmissions > 0) {
             playlistData.totalSubmissions = playlistData.totalSubmissions - 1;
             await playlistData.save();
           }
