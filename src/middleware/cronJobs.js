@@ -251,16 +251,21 @@ const topUsersWithPosition = await Promise.all(
       });
     }
 
-        const oldPosition = responseRateDoc?.lastWeek;
-        if (responseRateDoc?.peak > place || responseRateDoc?.peak === 0) {
-          responseRateDoc.peak = place;
-        }
-        responseRateDoc.lastWeek = place;
-        if (responseRateDoc.lastWeek <= 20) {
-          responseRateDoc.weekInTopChart += 1;
-        }
+   const oldPosition = responseRateDoc?.lastWeek || null;
 
-        const res = await responseRateDoc.save();
+    // 3️⃣ Update peak & lastWeek correctly
+    if (responseRateDoc?.peak > place || responseRateDoc?.peak === 0) {
+      responseRateDoc.peak = place;
+    }
+
+    responseRateDoc.lastWeek = place;
+
+    if (place <= 20) {
+      responseRateDoc.weekInTopChart =
+        (responseRateDoc.weekInTopChart || 0) + 1;
+    }
+
+    const res = await responseRateDoc.save();
         const allPlaylists = await Playlist.find({
           isActive: true,
           userId: rate?.userId,
